@@ -408,6 +408,41 @@ CELL_COLOR = {
 }
 
 
+# ──────────────────────────────────────────────
+#  美国年龄里程碑法律  /  U.S. Age Milestone Laws
+#  (age -> list of (law_name, description, emoji))
+# ──────────────────────────────────────────────
+US_LAWS = {
+    0:  [("Birth Registration",      "Social Security Act §205 — SSN issued at birth",          "📜")],
+    5:  [("Compulsory Education",    "Every state mandates school enrollment by age 5–6",        "🏫")],
+    13: [("COPPA",                   "Children's Online Privacy Protection Act — parental consent required under 13", "🔒")],
+    16: [("Driver's License",        "Most states allow driving at 16 (graduated license)",      "🚗"),
+         ("Work Permit",             "FLSA permits work with restrictions; full work at 16",     "💼")],
+    17: [("R-Rated Films",           "MPAA rating — unaccompanied viewing allowed at 17",        "🎬"),
+         ("Military Enlistment",     "Can enlist with parental consent (10 U.S.C. §505)",        "🎖️")],
+    18: [("Voting Rights",           "26th Amendment — right to vote",                           "🗳️"),
+         ("Legal Adult",             "Age of majority in most states — full contract rights",    "⚖️"),
+         ("Federal Tobacco",         "Family Smoking Prevention Act — purchase age raised to 21 (2019)", "🚭"),
+         ("Military Service",        "Can enlist without parental consent",                      "🪖"),
+         ("Lottery",                 "Most states allow lottery purchase at 18",                 "🎰")],
+    21: [("Alcohol",                 "21st Amendment / National Minimum Drinking Age Act 1984",  "🍺"),
+         ("Handgun Purchase",        "Federal law prohibits FFL handgun sales under 21",         "🔫"),
+         ("Car Rental",              "Most agencies require age 21+ (25 for no surcharge)",      "🚙")],
+    25: [("House of Reps",           "U.S. Constitution Art. I §2 — minimum age to serve",       "🏛️"),
+         ("Brain Fully Developed",   "CDC/NIH: prefrontal cortex fully matures ~25",             "🧠")],
+    30: [("U.S. Senate",             "U.S. Constitution Art. I §3 — minimum age to serve",       "🏛️")],
+    35: [("U.S. President",          "U.S. Constitution Art. II §1 — minimum age to serve",      "🇺🇸")],
+    59: [("IRA Withdrawal",          "IRS Rule — penalty-free IRA withdrawals at 59½",           "💰")],
+    62: [("Early Social Security",   "SSA — early retirement benefits (reduced amount)",         "💵")],
+    65: [("Medicare",                "Social Security Act Title XVIII — health coverage begins", "🏥"),
+         ("Senior Discounts",        "AARP membership, airline/hotel senior rates widely apply", "🎟️")],
+    67: [("Full Social Security",    "SSA — full retirement benefit for those born after 1960",  "💰")],
+    70: [("Max Social Security",     "SSA — delayed credits max out; no benefit to wait longer", "💎")],
+    100:[("Centenarian",             "President sends congratulatory letter (White House tradition)", "🎉"),
+         ("Supercentenarian path",   "110+ qualifies as supercentenarian per Gerontology Research", "🌟")],
+}
+
+
 def render_character(char_key, width=7):
     """Render a single character as list of colored strings."""
     char = CHARACTERS[char_key]
@@ -515,6 +550,73 @@ def print_all_ages(animated=False):
     print()
 
 
+def get_laws_at_age(age: int) -> list:
+    """Return all US milestone laws that unlock at or before this age."""
+    result = []
+    for milestone_age in sorted(US_LAWS.keys()):
+        if age >= milestone_age:
+            for law in US_LAWS[milestone_age]:
+                result.append((milestone_age, *law))
+    return result
+
+
+def get_laws_unlocked_at(age: int) -> list:
+    """Return US laws that unlock exactly at this age."""
+    # Check exact age and age-1 for half-year milestones (59 covers 59.5)
+    result = []
+    check = age if age != 59 else 59
+    if check in US_LAWS:
+        for law in US_LAWS[check]:
+            result.append((check, *law))
+    return result
+
+
+def print_us_laws_timeline(animated: bool = True):
+    """Print a visual timeline of all US age milestone laws."""
+    print()
+    print(colorize("  ╔══════════════════════════════════════════════════════════════════╗", Color.BRIGHT_CYAN))
+    print(colorize("  ║     🇺🇸  美国年龄里程碑法律  /  U.S. Age Milestone Laws  🇺🇸      ║", Color.BRIGHT_CYAN))
+    print(colorize("  ╚══════════════════════════════════════════════════════════════════╝", Color.BRIGHT_CYAN))
+    print()
+
+    age_to_key = {
+        0: "baby", 5: "baby", 13: "child", 16: "teen", 17: "teen",
+        18: "teen", 21: "young_adult", 25: "young_adult", 30: "young_adult",
+        35: "young_adult", 59: "middle_aged", 62: "elder", 65: "elder",
+        67: "elder", 70: "elder", 100: "very_elder",
+    }
+
+    for milestone_age in sorted(US_LAWS.keys()):
+        char_key = age_to_key.get(milestone_age, "middle_aged")
+        shirt_color = SHIRT_COLORS[CHARACTERS[char_key]["shirt_idx"]]
+
+        age_label = f"Age {milestone_age}" if milestone_age != 59 else "Age 59½"
+        print(colorize(f"  {'─'*66}", Color.BRIGHT_BLACK))
+        print(colorize(f"  ◆ {age_label}", shirt_color + Color.BOLD))
+
+        for _, name, desc, emoji in [(milestone_age, *l) for l in US_LAWS[milestone_age]]:
+            print(f"    {emoji}  {colorize(name, Color.BRIGHT_WHITE)}")
+            # Word-wrap description at 58 chars
+            words = desc.split()
+            line = "       "
+            for word in words:
+                if len(line) + len(word) + 1 > 66:
+                    print(colorize(line, Color.BRIGHT_BLACK))
+                    line = "       " + word
+                else:
+                    line += (" " if line.strip() else "") + word
+            if line.strip():
+                print(colorize(line, Color.BRIGHT_BLACK))
+
+        if animated:
+            time.sleep(0.05)
+
+    print(colorize(f"  {'─'*66}", Color.BRIGHT_BLACK))
+    print()
+    print(colorize("  Sources: U.S. Constitution · SSA · IRS · FLSA · COPPA · MPAA", Color.BRIGHT_BLACK))
+    print()
+
+
 def print_single_age(age: int):
     """Print a single pixel character for the given age."""
     if age < 0:
@@ -538,13 +640,31 @@ def print_single_age(age: int):
 
     char = CHARACTERS[key]
     lines = render_character(key)
+    laws_here = get_laws_unlocked_at(age)
+    all_laws = get_laws_at_age(age)
 
     print()
     print(colorize(f"  Age {age} — {char['label']}", Color.BRIGHT_WHITE + Color.BOLD))
     print(colorize("  " + char["age"], Color.BRIGHT_YELLOW))
     print()
-    for line in lines:
-        print("    " + line)
+
+    # Side-by-side: pixel art on left, laws on right
+    art_width = 22  # approx display width of pixel art block
+    law_lines = []
+    if laws_here:
+        law_lines.append(colorize("  🇺🇸 Unlocked at this age:", Color.BRIGHT_CYAN))
+        for _, name, desc, emoji in laws_here:
+            law_lines.append(f"     {emoji} {colorize(name, Color.BRIGHT_WHITE)}")
+    if all_laws and not laws_here:
+        law_lines.append(colorize("  🇺🇸 Rights so far:", Color.BRIGHT_CYAN))
+        for a, name, _, emoji in all_laws[-3:]:
+            law_lines.append(f"     {emoji} {colorize(name, Color.BRIGHT_BLACK)} (age {a})")
+
+    max_rows = max(len(lines), len(law_lines))
+    for i in range(max_rows):
+        art_part = ("    " + lines[i]) if i < len(lines) else " " * 18
+        law_part = ("    " + law_lines[i]) if i < len(law_lines) else ""
+        print(art_part + law_part)
     print()
 
 
@@ -598,23 +718,26 @@ def print_age_progression(start: int = 0, end: int = 80, step: int = 10, animate
 
 def main():
     args = sys.argv[1:]
+    no_anim = "--no-anim" in args
+    args = [a for a in args if a != "--no-anim"]
 
     if not args or args[0] in ("-h", "--help"):
-        print_all_ages(animated=True)
+        print_all_ages(animated=not no_anim)
         print(colorize("  Usage:", Color.BRIGHT_WHITE))
         print("    python3 pixel_character.py              # Show all ages")
-        print("    python3 pixel_character.py <age>        # Show single age")
+        print("    python3 pixel_character.py <age>        # Show single age + US laws")
         print("    python3 pixel_character.py --progress   # Age progression 0→80")
+        print("    python3 pixel_character.py --laws       # 🇺🇸 US age milestone laws")
         print("    python3 pixel_character.py --no-anim    # No animation")
         print()
         return
 
-    if args[0] == "--progress":
-        print_age_progression(animated=("--no-anim" not in args))
+    if args[0] == "--laws":
+        print_us_laws_timeline(animated=not no_anim)
         return
 
-    if args[0] == "--no-anim":
-        print_all_ages(animated=False)
+    if args[0] == "--progress":
+        print_age_progression(animated=not no_anim)
         return
 
     try:
