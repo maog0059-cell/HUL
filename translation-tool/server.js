@@ -2,10 +2,41 @@ import express from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { readFileSync, existsSync } from 'fs';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+
+// Load .env file if present
+const envPath = new URL('.env', import.meta.url).pathname;
+if (existsSync(envPath)) {
+  readFileSync(envPath, 'utf8').split('\n').forEach(line => {
+    const [key, ...vals] = line.split('=');
+    if (key && vals.length) process.env[key.trim()] = vals.join('=').trim();
+  });
+}
+
+// Detect proxy from environment (supports HTTPS_PROXY / https_proxy)
+const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy ||
+                 process.env.HTTP_PROXY  || process.env.http_proxy || null;
+const httpAgent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined;
+
+// Resolve auth token: prefer session ingress token file (Bearer auth), fall back to ANTHROPIC_API_KEY
+let authToken = null;
+const sessionTokenFile = process.env.CLAUDE_SESSION_INGRESS_TOKEN_FILE;
+if (sessionTokenFile && existsSync(sessionTokenFile)) {
+  authToken = readFileSync(sessionTokenFile, 'utf8').trim();
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
-const client = new Anthropic();
+const clientOpts = { ...(httpAgent ? { httpAgent } : {}) };
+if (authToken) {
+  // Use Bearer auth; pass apiKey: null to prevent SDK from reading ANTHROPIC_API_KEY env var
+  clientOpts.authToken = authToken;
+  clientOpts.apiKey = null;
+} else if (!process.env.ANTHROPIC_API_KEY) {
+  console.warn('Warning: No API key found. Set ANTHROPIC_API_KEY in .env or ensure CLAUDE_SESSION_INGRESS_TOKEN_FILE is set.');
+}
+const client = new Anthropic(clientOpts);
 
 app.use(express.json());
 app.use(express.static(join(__dirname, 'public')));
